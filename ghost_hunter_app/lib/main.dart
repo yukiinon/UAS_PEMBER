@@ -14,6 +14,16 @@ void main() async {
     DeviceOrientation.portraitUp,
   ]);
   
+  // Set status bar menjadi transparan dan gelap
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.black,
+      systemNavigationBarIconBrightness: Brightness.light,
+    ),
+  );
+  
   runApp(GhostHunterApp());
 }
 
@@ -26,51 +36,77 @@ class GhostHunterApp extends StatelessWidget {
       title: 'Pemburu Hantu',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.purple,
+        primarySwatch: Colors.red,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: Colors.black,
+        scaffoldBackgroundColor: const Color(0xFF0A0A0A), // Hitam pekat
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF212121),
+          backgroundColor: Color(0xFF1A0000), // Merah gelap
           foregroundColor: Colors.white,
           elevation: 0,
           centerTitle: true,
         ),
         cardTheme: CardTheme(
-          color: const Color(0xFF212121),
-          elevation: 4,
+          color: const Color(0xFF1A1A1A), // Abu gelap
+          elevation: 8,
+          shadowColor: Colors.red.withOpacity(0.3),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(15),
+            side: BorderSide(
+              color: Colors.red.withOpacity(0.2),
+              width: 1,
+            ),
           ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.purple[700],
+            backgroundColor: const Color(0xFF8B0000), // Dark red
             foregroundColor: Colors.white,
-            elevation: 2,
+            elevation: 5,
+            shadowColor: Colors.red.withOpacity(0.5),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
         ),
         textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Colors.white),
-          bodyMedium: TextStyle(color: Colors.white),
-          titleLarge: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          titleMedium: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          bodyLarge: TextStyle(color: Colors.white, fontFamily: 'Creepster'),
+          bodyMedium: TextStyle(color: Colors.white70),
+          titleLarge: TextStyle(
+            color: Colors.white, 
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+            shadows: [
+              Shadow(
+                color: Colors.red,
+                offset: Offset(0, 0),
+                blurRadius: 10,
+              ),
+            ],
+          ),
+          titleMedium: TextStyle(
+            color: Colors.white, 
+            fontWeight: FontWeight.bold,
+            shadows: [
+              Shadow(
+                color: Colors.red,
+                offset: Offset(0, 0),
+                blurRadius: 5,
+              ),
+            ],
+          ),
         ),
         iconTheme: const IconThemeData(
-          color: Colors.white,
+          color: Colors.red,
         ),
         colorScheme: ColorScheme.dark(
-          primary: Colors.purple,
-          secondary: Colors.green,
-          surface: const Color(0xFF212121),
-          background: Colors.black,
+          primary: Colors.red,
+          secondary: Colors.orange,
+          surface: const Color(0xFF1A1A1A),
+          background: const Color(0xFF0A0A0A),
           error: Colors.red,
         ),
       ),
       home: HomeScreen(),
-      // Tambahan untuk debugging
       builder: (context, child) {
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),

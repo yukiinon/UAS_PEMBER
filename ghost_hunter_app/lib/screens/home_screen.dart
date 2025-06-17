@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'dart:async'; // ← TAMBAHKAN INI
+import 'dart:math';
 import '../services/location_service.dart';
 import '../services/ghost_service.dart';
 import '../services/notification_service.dart';
@@ -12,10 +14,14 @@ class HomeScreen extends StatefulWidget {
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   String _currentLocation = 'Mendapatkan lokasi...';
   String _ghostActivity = 'Tidak Diketahui';
   DateTime? _lastScan;
+  
+  late AnimationController _flickerController;
+  late AnimationController _pulseController;
+  late AnimationController _floatController;
 
   @override
   void initState() {
@@ -23,10 +29,54 @@ class _HomeScreenState extends State<HomeScreen> {
     _getCurrentLocation();
     _updateGhostActivity();
     
+    // Animasi untuk efek seram
+    _flickerController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    
+    _pulseController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    );
+    
+    _floatController = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    );
+    
+    // Mulai animasi
+    _startSpookyAnimations();
+    
     // Kirim notifikasi acak setelah 30 detik
     Future.delayed(Duration(seconds: 30), () {
       NotificationService.showRandomGhostAlert();
     });
+  }
+
+  void _startSpookyAnimations() {
+    // Flicker effect acak
+    Timer.periodic(Duration(seconds: 5 + Random().nextInt(10)), (timer) {
+      if (mounted) {
+        _flickerController.forward().then((_) {
+          _flickerController.reverse();
+        });
+      }
+    });
+    
+    // Pulse effect kontinyu
+    _pulseController.repeat(reverse: true);
+    
+    // Float effect kontinyu
+    _floatController.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _flickerController.dispose();
+    _pulseController.dispose();
+    _floatController.dispose();
+    super.dispose();
   }
 
   Future<void> _getCurrentLocation() async {
@@ -72,150 +122,295 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: Text(
-          '👻 Detektor Hantu',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
+      backgroundColor: const Color(0xFF0A0A0A),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.topCenter,
+            radius: 1.5,
+            colors: [
+              const Color(0xFF1A0000), // Dark red
+              const Color(0xFF0A0A0A), // Black
+              Colors.black,
+            ],
           ),
         ),
-        backgroundColor: Colors.grey[900],
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            // Kartu Status
-            Card(
-              color: Colors.grey[900],
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.location_on, color: Colors.green, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          'Lokasi Saat Ini:',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  // Header dengan efek flicker
+                  AnimatedBuilder(
+                    animation: _flickerController,
+                    builder: (context, child) {
+                      return Opacity(
+                        opacity: 1.0 - (_flickerController.value * 0.3),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Column(
+                            children: [
+                              // Floating ghost emoji
+                              AnimatedBuilder(
+                                animation: _floatController,
+                                builder: (context, child) {
+                                  return Transform.translate(
+                                    offset: Offset(0, sin(_floatController.value * 2 * pi) * 10),
+                                    child: Text(
+                                      '👻',
+                                      style: TextStyle(
+                                        fontSize: 60,
+                                        shadows: [
+                                          Shadow(
+                                            color: Colors.red.withOpacity(0.8),
+                                            offset: Offset(0, 0),
+                                            blurRadius: 20,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              SizedBox(height: 10),
+                              Text(
+                                'DETEKTOR HANTU',
+                                style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  letterSpacing: 3,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.red,
+                                      offset: Offset(0, 0),
+                                      blurRadius: 15,
+                                    ),
+                                    Shadow(
+                                      color: Colors.red.withOpacity(0.5),
+                                      offset: Offset(2, 2),
+                                      blurRadius: 5,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                'REALM OF THE DEAD',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.red.withOpacity(0.8),
+                                  letterSpacing: 2,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      _currentLocation,
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 12,
+                      );
+                    },
+                  ),
+                  
+                  SizedBox(height: 20),
+                  
+                  // Status Card dengan efek seram
+                  AnimatedBuilder(
+                    animation: _pulseController,
+                    builder: (context, child) {
+                      return Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(15),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.red.withOpacity(0.3 + _pulseController.value * 0.2),
+                              blurRadius: 20,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: Card(
+                          color: const Color(0xFF1A1A1A),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(15),
+                              border: Border.all(
+                                color: Colors.red.withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.location_on, color: Colors.red, size: 20),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'LOKASI TERKUTUK:',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  _currentLocation,
+                                  style: TextStyle(
+                                    color: Colors.grey[400],
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                SizedBox(height: 20),
+                                
+                                Row(
+                                  children: [
+                                    Text(
+                                      '💀 AKTIVITAS ARWAH: ',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: _getActivityColor(_ghostActivity),
+                                        borderRadius: BorderRadius.circular(15),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: _getActivityColor(_ghostActivity).withOpacity(0.5),
+                                            blurRadius: 10,
+                                            spreadRadius: 1,
+                                          ),
+                                        ],
+                                      ),
+                                      child: Text(
+                                        _ghostActivity.toUpperCase(),
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                
+                                if (_lastScan != null) ...[
+                                  SizedBox(height: 12),
+                                  Text(
+                                    '⚰️ RITUAL TERAKHIR: ${_lastScan!.hour}:${_lastScan!.minute.toString().padLeft(2, '0')}',
+                                    style: TextStyle(
+                                      color: Colors.grey[400],
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  
+                  SizedBox(height: 40),
+                  
+                  // Action Buttons dengan efek seram
+                  _buildSpookyActionButton(
+                    icon: '📸',
+                    title: 'RITUAL PEMANGGILAN',
+                    subtitle: 'Panggil arwah dengan kamera mistis',
+                    colors: [const Color(0xFF8B0000), const Color(0xFF4B0000)],
+                    onTap: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => CameraScreen()),
+                      );
+                      if (result == true) {
+                        setState(() {
+                          _lastScan = DateTime.now();
+                        });
+                      }
+                    },
+                  ),
+                  
+                  SizedBox(height: 16),
+                  
+                  _buildSpookyActionButton(
+                    icon: '🗺️',
+                    title: 'PETA KEMATIAN',
+                    subtitle: 'Jelajahi tempat-tempat terkutuk',
+                    colors: [const Color(0xFF4B0082), const Color(0xFF2F0052)],
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => MapScreen()),
+                      );
+                    },
+                  ),
+                  
+                  SizedBox(height: 16),
+                  
+                  _buildSpookyActionButton(
+                    icon: '💀',
+                    title: 'BUKU KEMATIAN',
+                    subtitle: 'Catatan perjumpaan dengan alam baka',
+                    colors: [const Color(0xFF006400), const Color(0xFF003200)],
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => EncountersScreen()),
+                      );
+                    },
+                  ),
+                  
+                  SizedBox(height: 40),
+                  
+                  // Warning text
+                  Container(
+                    padding: EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: Colors.red.withOpacity(0.3),
+                        width: 1,
                       ),
                     ),
-                    SizedBox(height: 20),
-                    
-                    Row(
+                    child: Row(
                       children: [
-                        Text(
-                          '🎲 Aktivitas Hantu: ',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: _getActivityColor(_ghostActivity),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                        Icon(Icons.warning, color: Colors.red, size: 20),
+                        SizedBox(width: 10),
+                        Expanded(
                           child: Text(
-                            _ghostActivity,
+                            'PERINGATAN: Aplikasi ini dapat membuka portal ke alam lain. Gunakan dengan hati-hati.',
                             style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                              color: Colors.red,
+                              fontSize: 12,
+                              fontStyle: FontStyle.italic,
                             ),
                           ),
                         ),
                       ],
                     ),
-                    
-                    if (_lastScan != null) ...[
-                      SizedBox(height: 12),
-                      Text(
-                        '⏰ Scan Terakhir: ${_lastScan!.hour}:${_lastScan!.minute.toString().padLeft(2, '0')}',
-                        style: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-            
-            SizedBox(height: 40),
-            
-            // Tombol Aksi
-            _buildActionButton(
-              icon: '📸',
-              title: 'PINDAI HANTU',
-              subtitle: 'Gunakan kamera untuk mendeteksi arwah',
-              onTap: () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => CameraScreen()),
-                );
-                if (result == true) {
-                  setState(() {
-                    _lastScan = DateTime.now();
-                  });
-                }
-              },
-            ),
-            
-            SizedBox(height: 16),
-            
-            _buildActionButton(
-              icon: '📍',
-              title: 'PETA BERHANTU',
-              subtitle: 'Jelajahi lokasi berhantu di sekitar',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => MapScreen()),
-                );
-              },
-            ),
-            
-            SizedBox(height: 16),
-            
-            _buildActionButton(
-              icon: '👻',
-              title: 'PERJUMPAAN SAYA',
-              subtitle: 'Lihat riwayat perjumpaan hantu Anda',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => EncountersScreen()),
-                );
-              },
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildActionButton({
+  Widget _buildSpookyActionButton({
     required String icon,
     required String title,
     required String subtitle,
+    required List<Color> colors,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
@@ -225,24 +420,41 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.purple[900]!, Colors.purple[700]!],
+            colors: colors,
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(15),
+          border: Border.all(
+            color: Colors.red.withOpacity(0.3),
+            width: 1,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.purple.withOpacity(0.3),
-              blurRadius: 10,
+              color: colors[0].withOpacity(0.4),
+              blurRadius: 15,
               offset: Offset(0, 5),
+              spreadRadius: 2,
+            ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.5),
+              blurRadius: 10,
+              offset: Offset(0, 3),
             ),
           ],
         ),
         child: Row(
           children: [
-            Text(
-              icon,
-              style: TextStyle(fontSize: 30),
+            Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                icon,
+                style: TextStyle(fontSize: 30),
+              ),
             ),
             SizedBox(width: 16),
             Expanded(
@@ -255,13 +467,23 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black,
+                          offset: Offset(1, 1),
+                          blurRadius: 3,
+                        ),
+                      ],
                     ),
                   ),
+                  SizedBox(height: 4),
                   Text(
                     subtitle,
                     style: TextStyle(
                       color: Colors.grey[300],
                       fontSize: 12,
+                      fontStyle: FontStyle.italic,
                     ),
                   ),
                 ],

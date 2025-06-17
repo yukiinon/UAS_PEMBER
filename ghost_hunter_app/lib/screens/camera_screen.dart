@@ -4,6 +4,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
+import 'dart:async'; // ← TAMBAHKAN INI
 import '../services/ghost_service.dart';
 import '../services/location_service.dart';
 import '../services/notification_service.dart';
@@ -15,18 +17,32 @@ class CameraScreen extends StatefulWidget {
   _CameraScreenState createState() => _CameraScreenState();
 }
 
-class _CameraScreenState extends State<CameraScreen> {
+class _CameraScreenState extends State<CameraScreen> with TickerProviderStateMixin {
   CameraController? _controller;
   List<CameraDescription>? _cameras;
   bool _isScanning = false;
   bool _ghostDetected = false;
   GhostEncounter? _detectedGhost;
-  String _statusMessage = 'Ketuk untuk mulai memindai';
+  String _statusMessage = 'Ketuk untuk memulai ritual...';
+  
+  late AnimationController _glitchController;
+  late AnimationController _redFlashController;
 
   @override
   void initState() {
     super.initState();
     _initializeCamera();
+    
+    // Animasi untuk efek glitch dan flash
+    _glitchController = AnimationController(
+      duration: const Duration(milliseconds: 100),
+      vsync: this,
+    );
+    
+    _redFlashController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
   }
 
   Future<void> _initializeCamera() async {
@@ -53,7 +69,22 @@ class _CameraScreenState extends State<CameraScreen> {
     setState(() {
       _isScanning = true;
       _ghostDetected = false;
-      _statusMessage = 'Memindai aktivitas paranormal...';
+      _statusMessage = 'MEMANGGIL ARWAH DARI ALAM BAKA...';
+    });
+    
+    // Efek glitch saat scanning
+    _startGlitchEffect();
+  }
+
+  void _startGlitchEffect() {
+    Timer.periodic(Duration(milliseconds: 200), (timer) {
+      if (_isScanning && mounted) {
+        _glitchController.forward().then((_) {
+          _glitchController.reverse();
+        });
+      } else {
+        timer.cancel();
+      }
     });
   }
 
@@ -61,14 +92,19 @@ class _CameraScreenState extends State<CameraScreen> {
     bool detected = GhostService.detectGhost();
     
     if (detected) {
+      // Flash merah saat hantu terdeteksi
+      _redFlashController.forward().then((_) {
+        _redFlashController.reverse();
+      });
+      
       // Ambil foto
       String? photoPath = await _takePhoto();
       
       // Dapatkan lokasi
-      String location = 'Lokasi Tidak Diketahui';
+      String location = 'Dimensi Tidak Diketahui';
       final position = await LocationService.getCurrentLocation();
       if (position != null) {
-        location = 'Lat: ${position.latitude.toStringAsFixed(4)}, Lng: ${position.longitude.toStringAsFixed(4)}';
+        location = 'Koordinat Terkutuk: ${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
       }
       
       // Generate perjumpaan hantu
@@ -83,11 +119,11 @@ class _CameraScreenState extends State<CameraScreen> {
       setState(() {
         _ghostDetected = true;
         _detectedGhost = ghost;
-        _statusMessage = 'HANTU TERDETEKSI!';
+        _statusMessage = '💀 KONTAK DENGAN ALAM BAKA BERHASIL! 💀';
       });
     } else {
       setState(() {
-        _statusMessage = 'Tidak ada aktivitas paranormal terdeteksi';
+        _statusMessage = 'Arwah menolak untuk menampakkan diri...';
       });
     }
     
@@ -103,7 +139,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
     try {
       final Directory appDir = await getApplicationDocumentsDirectory();
-      final String photoPath = '${appDir.path}/hantu_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final String photoPath = '${appDir.path}/arwah_${DateTime.now().millisecondsSinceEpoch}.jpg';
       
       final XFile photo = await _controller!.takePicture();
       await photo.saveTo(photoPath);
@@ -129,6 +165,8 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   void dispose() {
     _controller?.dispose();
+    _glitchController.dispose();
+    _redFlashController.dispose();
     super.dispose();
   }
 
@@ -137,13 +175,36 @@ class _CameraScreenState extends State<CameraScreen> {
     if (_controller == null || !_controller!.value.isInitialized) {
       return Scaffold(
         backgroundColor: Colors.black,
-        appBar: AppBar(
-          title: Text('Pemindai Hantu', style: TextStyle(color: Colors.white)),
-          backgroundColor: Colors.grey[900],
-          iconTheme: IconThemeData(color: Colors.white),
-        ),
-        body: Center(
-          child: CircularProgressIndicator(color: Colors.green),
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              colors: [
+                Colors.red.withOpacity(0.3),
+                Colors.black,
+              ],
+            ),
+          ),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  color: Colors.red,
+                  strokeWidth: 3,
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'MEMBUKA PORTAL...',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       );
     }
@@ -152,16 +213,39 @@ class _CameraScreenState extends State<CameraScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Preview Kamera
+          // Preview Kamera dengan efek
           Positioned.fill(
-            child: CameraPreview(_controller!),
+            child: AnimatedBuilder(
+              animation: _glitchController,
+              builder: (context, child) {
+                return Transform.translate(
+                  offset: Offset(
+                    _glitchController.value * (Random().nextDouble() - 0.5) * 10,
+                    _glitchController.value * (Random().nextDouble() - 0.5) * 10,
+                  ),
+                  child: CameraPreview(_controller!),
+                );
+              },
+            ),
           ),
           
-          // Overlay hijau
+          // Overlay merah gelap
           Positioned.fill(
             child: Container(
-              color: Colors.green.withOpacity(0.1),
+              color: Colors.red.withOpacity(0.15),
             ),
+          ),
+          
+          // Flash merah saat deteksi
+          AnimatedBuilder(
+            animation: _redFlashController,
+            builder: (context, child) {
+              return Positioned.fill(
+                child: Container(
+                  color: Colors.red.withOpacity(_redFlashController.value * 0.7),
+                ),
+              );
+            },
           ),
           
           // Overlay Scanner
@@ -171,7 +255,7 @@ class _CameraScreenState extends State<CameraScreen> {
               onScanComplete: _onScanComplete,
             ),
           
-          // Bar Atas
+          // Bar Atas dengan efek seram
           Positioned(
             top: 0,
             left: 0,
@@ -188,7 +272,7 @@ class _CameraScreenState extends State<CameraScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.7),
+                    Colors.black.withOpacity(0.8),
                     Colors.transparent,
                   ],
                 ),
@@ -196,27 +280,35 @@ class _CameraScreenState extends State<CameraScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back, color: Colors.white),
+                    icon: Icon(Icons.arrow_back, color: Colors.red, size: 28),
                     onPressed: () => Navigator.pop(context, _ghostDetected),
                   ),
                   Expanded(
                     child: Text(
-                      'Pemindai Hantu',
+                      '💀 PORTAL ALAM BAKA 💀',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
+                        letterSpacing: 1,
+                        shadows: [
+                          Shadow(
+                            color: Colors.red,
+                            offset: Offset(0, 0),
+                            blurRadius: 10,
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  SizedBox(width: 48), // Seimbangkan tombol kembali
+                  SizedBox(width: 48),
                 ],
               ),
             ),
           ),
           
-          // Kontrol Bawah
+          // Kontrol Bawah dengan desain seram
           Positioned(
             bottom: 0,
             left: 0,
@@ -228,7 +320,7 @@ class _CameraScreenState extends State<CameraScreen> {
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
                   colors: [
-                    Colors.black.withOpacity(0.8),
+                    Colors.black.withOpacity(0.9),
                     Colors.transparent,
                   ],
                 ),
@@ -236,52 +328,87 @@ class _CameraScreenState extends State<CameraScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Pesan Status
-                  Text(
-                    _statusMessage,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: _ghostDetected ? Colors.red : Colors.green,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                  // Pesan Status dengan efek berkedip
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.red.withOpacity(0.5),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      _statusMessage,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: _ghostDetected ? Colors.red : Colors.orange,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1,
+                      ),
                     ),
                   ),
                   
                   if (_ghostDetected && _detectedGhost != null) ...[
-                    SizedBox(height: 10),
+                    SizedBox(height: 15),
                     Container(
-                      padding: EdgeInsets.all(15),
+                      padding: EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.red, width: 1),
+                        color: Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(color: Colors.red, width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.red.withOpacity(0.3),
+                            blurRadius: 20,
+                            spreadRadius: 2,
+                          ),
+                        ],
                       ),
                       child: Column(
                         children: [
                           Text(
-                            '👻 ${_detectedGhost!.ghostName}',
+                            '👻 ${_detectedGhost!.ghostName.toUpperCase()}',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 18,
+                              fontSize: 20,
                               fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.red,
+                                  offset: Offset(0, 0),
+                                  blurRadius: 10,
+                                ),
+                              ],
                             ),
                           ),
-                          SizedBox(height: 5),
+                          SizedBox(height: 8),
                           Text(
                             _detectedGhost!.description,
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.grey[300],
                               fontSize: 14,
+                              fontStyle: FontStyle.italic,
                             ),
                           ),
-                          SizedBox(height: 5),
-                          Text(
-                            'Tingkat Aktivitas: ${_detectedGhost!.activityLevel}',
-                            style: TextStyle(
+                          SizedBox(height: 8),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
                               color: Colors.red,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Text(
+                              'TINGKAT BAHAYA: ${_detectedGhost!.activityLevel.toUpperCase()}',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],
@@ -289,29 +416,50 @@ class _CameraScreenState extends State<CameraScreen> {
                     ),
                   ],
                   
-                  SizedBox(height: 20),
+                  SizedBox(height: 30),
                   
-                  // Tombol Scan
+                  // Tombol Ritual dengan efek seram
                   GestureDetector(
                     onTap: _isScanning ? null : _startScanning,
                     child: Container(
-                      width: 80,
-                      height: 80,
+                      width: 100,
+                      height: 100,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: _isScanning 
-                            ? Colors.grey 
-                            : Colors.green.withOpacity(0.8),
+                        gradient: RadialGradient(
+                          colors: _isScanning 
+                              ? [Colors.grey[800]!, Colors.grey[900]!]
+                              : [Colors.red, const Color(0xFF8B0000)],
+                        ),
                         border: Border.all(
                           color: Colors.white,
                           width: 3,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _isScanning ? Colors.grey : Colors.red,
+                            blurRadius: 20,
+                            spreadRadius: 2,
+                          ),
+                        ],
                       ),
                       child: Icon(
-                        _isScanning ? Icons.hourglass_empty : Icons.search,
+                        _isScanning ? Icons.hourglass_empty : Icons.visibility,
                         color: Colors.white,
-                        size: 30,
+                        size: 40,
                       ),
+                    ),
+                  ),
+                  
+                  SizedBox(height: 10),
+                  
+                  Text(
+                    _isScanning ? 'RITUAL BERLANGSUNG...' : 'MULAI RITUAL',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
                     ),
                   ),
                 ],

@@ -19,6 +19,7 @@ class _GhostScannerOverlayState extends State<GhostScannerOverlay>
     with TickerProviderStateMixin {
   late AnimationController _scanController;
   late AnimationController _pulseController;
+  late AnimationController _rippleController;
 
   @override
   void initState() {
@@ -28,7 +29,11 @@ class _GhostScannerOverlayState extends State<GhostScannerOverlay>
       vsync: this,
     );
     _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _rippleController = AnimationController(
+      duration: const Duration(seconds: 3),
       vsync: this,
     );
 
@@ -40,12 +45,14 @@ class _GhostScannerOverlayState extends State<GhostScannerOverlay>
   void _startScanning() {
     _scanController.repeat();
     _pulseController.repeat(reverse: true);
+    _rippleController.repeat();
     
     // Auto selesai scan setelah 3-5 detik
     Future.delayed(Duration(seconds: 3 + Random().nextInt(3)), () {
       if (mounted) {
         _scanController.stop();
         _pulseController.stop();
+        _rippleController.stop();
         widget.onScanComplete?.call();
       }
     });
@@ -55,6 +62,7 @@ class _GhostScannerOverlayState extends State<GhostScannerOverlay>
   void dispose() {
     _scanController.dispose();
     _pulseController.dispose();
+    _rippleController.dispose();
     super.dispose();
   }
 
@@ -63,10 +71,38 @@ class _GhostScannerOverlayState extends State<GhostScannerOverlay>
     return Container(
       width: double.infinity,
       height: double.infinity,
-      color: Colors.black.withOpacity(0.3),
+      color: Colors.black.withOpacity(0.4),
       child: Stack(
         children: [
-          // Lingkaran scanning
+          // Ripple effect
+          Center(
+            child: AnimatedBuilder(
+              animation: _rippleController,
+              builder: (context, child) {
+                return Stack(
+                  alignment: Alignment.center,
+                  children: List.generate(3, (index) {
+                    final delay = index * 0.3;
+                    final animValue = (_rippleController.value - delay).clamp(0.0, 1.0);
+                    
+                    return Container(
+                      width: 300 * animValue,
+                      height: 300 * animValue,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.red.withOpacity(0.5 - animValue * 0.5),
+                          width: 2,
+                        ),
+                      ),
+                    );
+                  }),
+                );
+              },
+            ),
+          ),
+          
+          // Lingkaran scanning utama
           Center(
             child: AnimatedBuilder(
               animation: _scanController,
@@ -74,36 +110,59 @@ class _GhostScannerOverlayState extends State<GhostScannerOverlay>
                 return Transform.rotate(
                   angle: _scanController.value * 2 * pi,
                   child: Container(
-                    width: 200,
-                    height: 200,
+                    width: 250,
+                    height: 250,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: Colors.green.withOpacity(0.8),
-                        width: 2,
+                        color: Colors.red.withOpacity(0.8),
+                        width: 3,
                       ),
                     ),
                     child: Stack(
                       children: [
-                        // Garis scanning
+                        // Garis scanning merah
                         Positioned(
                           top: 0,
-                          left: 98,
+                          left: 122,
                           child: Container(
-                            width: 4,
-                            height: 100,
+                            width: 6,
+                            height: 125,
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
                                 colors: [
-                                  Colors.green,
-                                  Colors.green.withOpacity(0.1),
+                                  Colors.red,
+                                  Colors.red.withOpacity(0.1),
                                 ],
                               ),
                             ),
                           ),
                         ),
+                        
+                        // Titik-titik seram di lingkaran
+                        ...List.generate(8, (index) {
+                          final angle = (index * pi / 4);
+                          return Positioned(
+                            top: 125 + cos(angle) * 110,
+                            left: 125 + sin(angle) * 110,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.red.withOpacity(0.8),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.red,
+                                    blurRadius: 10,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
                       ],
                     ),
                   ),
@@ -118,33 +177,104 @@ class _GhostScannerOverlayState extends State<GhostScannerOverlay>
               animation: _pulseController,
               builder: (context, child) {
                 return Container(
-                  width: 20 + (_pulseController.value * 10),
-                  height: 20 + (_pulseController.value * 10),
+                  width: 30 + (_pulseController.value * 20),
+                  height: 30 + (_pulseController.value * 20),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.green.withOpacity(0.8 - _pulseController.value * 0.3),
+                    color: Colors.red.withOpacity(0.9 - _pulseController.value * 0.4),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.red.withOpacity(0.5),
+                        blurRadius: 20 + (_pulseController.value * 10),
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.visibility,
+                    color: Colors.white,
+                    size: 16,
                   ),
                 );
               },
             ),
           ),
           
-          // Teks scanning
+          // Teks scanning dengan efek berkedip
           Positioned(
-            bottom: 100,
+            bottom: 120,
             left: 0,
             right: 0,
-            child: Text(
-              'MEMINDAI AKTIVITAS PARANORMAL...',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.green,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
+            child: AnimatedBuilder(
+              animation: _pulseController,
+              builder: (context, child) {
+                return Opacity(
+                  opacity: 0.7 + (_pulseController.value * 0.3),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    margin: EdgeInsets.symmetric(horizontal: 40),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.red.withOpacity(0.5),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      '💀 MEMANGGIL ARWAH DARI KEGELAPAN 💀',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.5,
+                        shadows: [
+                          Shadow(
+                            color: Colors.red,
+                            offset: Offset(0, 0),
+                            blurRadius: 10,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
+          
+          // Partikel mengambang
+          ...List.generate(10, (index) {
+            return AnimatedBuilder(
+              animation: _scanController,
+              builder: (context, child) {
+                final offset = Offset(
+                  sin(_scanController.value * 2 * pi + index) * 100,
+                  cos(_scanController.value * 2 * pi + index) * 100,
+                );
+                
+                return Positioned(
+                  top: MediaQuery.of(context).size.height / 2 + offset.dy,
+                  left: MediaQuery.of(context).size.width / 2 + offset.dx,
+                  child: Container(
+                    width: 4,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.red.withOpacity(0.6),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.red,
+                          blurRadius: 5,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          }),
         ],
       ),
     );

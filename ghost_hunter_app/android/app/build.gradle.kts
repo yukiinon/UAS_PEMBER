@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.ghost_hunter_app"
-    compileSdk = 34  // Turunkan ke 34 untuk stabilitas
+    compileSdk = 35  // Turunkan ke 34 untuk stabilitas
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -31,7 +31,7 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("debug")
-            isMinifyEnabled = false
+            isMinifyEnabled = true
         }
         debug {
             isDebuggable = true
